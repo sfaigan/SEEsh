@@ -60,10 +60,9 @@ int seesh_cd(char **args) {
 	char *dir = args[1];
 	if (dir == NULL) {
 		dir = getenv("HOME");
-	} else {
-		if (chdir(dir) != 0) {
-			perror("SEEsh");
-		}
+	}
+	if (chdir(dir) != 0) {
+		perror("SEEsh");
 	}
 	char *new_dir = getcwd(NULL, 0);
 	if (setenv("PWD", new_dir, 1) != 0) {
@@ -240,8 +239,29 @@ int execute(char **args) {
 
 // Configure the environment for the shell
 void initialize() {
-	// Open .SEESHrc
-	// Run commands
+	char *dir = getenv("HOME");
+	FILE *fp = fopen(".SEEshrc", "r");
+
+	if (fp == NULL) {
+		fprintf(stderr, "SEEsh: Error opening .SEEshrc. Exiting...");
+		exit(1);
+	}
+
+	char line[512];
+	char **args;
+	int status;
+
+	puts("Reading from .SEEshrc...");
+	while (fgets(line, sizeof(line), fp)) {
+		printf("\t%s", line);
+		args = tokenize_input(line);
+		if (execute(args) != 1) {
+			fprintf(stderr, "SEEsh: Error running the following command from .SEEshrc:\n%s", line);
+		}
+		free(args);
+	}
+	printf("\nDone!\n\n");
+	fclose(fp);
 }
 
 // Loop: { read and parse user input, execute relevant command }
@@ -253,6 +273,9 @@ void interpret(int argc, char **argv) {
 	do {
 		printf("? ");
 		line = read_input();
+		if ("line" == NULL) {
+			break;
+		}
 		args = tokenize_input(line);
 		status = execute(args);
 
@@ -274,7 +297,6 @@ int main(int argc, char **argv, char **envp) {
 /*
 TODO:
 - implement ctrl+d to exit
-- finish rc file
 - create makefile
 - write readme
 - test
