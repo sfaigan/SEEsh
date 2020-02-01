@@ -159,7 +159,11 @@ int seesh_history(char **args) {
 char *read_input(void) {
 	char *line = NULL;
 	ssize_t buffer_size = 0;
-	getline(&line, &buffer_size, stdin);
+	int status = getline(&line, &buffer_size, stdin);
+	if (status == -1) {
+		free(line);
+		exit(1);
+	}
 	return line;
 }
 
@@ -273,9 +277,6 @@ void interpret(int argc, char **argv) {
 	do {
 		printf("? ");
 		line = read_input();
-		if ("line" == NULL) {
-			break;
-		}
 		args = tokenize_input(line);
 		status = execute(args);
 
