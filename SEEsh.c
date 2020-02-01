@@ -16,7 +16,6 @@ int seesh_help(char **args);
 int seesh_exit(char **args);
 int seesh_set(char **args);
 int seesh_unset(char **args);
-int seesh_history(char **args);
 
 // Array of built-in function commands
 char *builtin_str[] = {
@@ -25,8 +24,7 @@ char *builtin_str[] = {
 	"help",
 	"exit",
 	"set",
-	"unset",
-	"history"
+	"unset"
 };
 
 char *builtin_desc[] = {
@@ -36,7 +34,6 @@ char *builtin_desc[] = {
 	"exit: Exits SEEsh.",
 	"set [var] [val]: Sets a given environment variable \"var\" to a given value \"val\". If nothing is given for \"val\", the environment variable called \"var\" will be set to the empty string. If no parameters are given, prints a list of all environment variables.",
 	"unset [var]: Destroys a given environment variable \"var\".",
-	"history: Prints the last 5 commands written. Also, type \'!\' followed by the prefix of a command and it will autocomplete based on history."
 };
 
 // Array of built-in function pointers
@@ -46,8 +43,7 @@ int (*builtin_fn[]) (char**) = {
 	&seesh_help,
 	&seesh_exit,
 	&seesh_set,
-	&seesh_unset,
-	&seesh_history
+	&seesh_unset
 };
 
 // Returns the number of built-in commands
@@ -147,11 +143,6 @@ int seesh_unset(char **args) {
 		}
 	}
 
-	return 1;
-}
-
-// Show command history
-int seesh_history(char **args) {
 	return 1;
 }
 
@@ -297,9 +288,3 @@ int main(int argc, char **argv, char **envp) {
 
 	return EXIT_SUCCESS;
 }
-
-/*
-TODO:
-- write readme
-- test
-*/
