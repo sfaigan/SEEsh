@@ -158,7 +158,7 @@ int seesh_history(char **args) {
 // Get input from stdin, return it as a line
 char *read_input(void) {
 	char *line = NULL;
-	ssize_t buffer_size = 0;
+	size_t buffer_size = 0;
 	int status = getline(&line, &buffer_size, stdin);
 	if (status == -1) {
 		free(line);
@@ -200,7 +200,7 @@ char **tokenize_input(char *line) {
 }
 
 int execute_program(char **args) {
-	pid_t pid, wpid;
+	pid_t pid;
 	int status;
 
 	pid = fork();
@@ -216,7 +216,7 @@ int execute_program(char **args) {
 	} else {
 		// Parent process
 		do {
-			wpid = waitpid(pid, &status, WUNTRACED);
+			waitpid(pid, &status, WUNTRACED);
 		} while (!WIFEXITED(status) && !WIFSIGNALED(status));
 	}
 
@@ -244,16 +244,19 @@ int execute(char **args) {
 // Configure the environment for the shell
 void initialize() {
 	char *dir = getenv("HOME");
-	FILE *fp = fopen(".SEEshrc", "r");
+	char filepath[512];
+	strcpy(filepath, dir);
+	strcat(filepath, "/.SEEshrc");
+	puts(filepath);
+	FILE *fp = fopen(filepath, "r");
 
 	if (fp == NULL) {
-		fprintf(stderr, "SEEsh: Error opening .SEEshrc. Exiting...");
-		exit(1);
+		fprintf(stderr, "SEEsh: Error opening .SEEshrc. Is it in the HOME directory?\n\n");
+		return;
 	}
 
 	char line[512];
 	char **args;
-	int status;
 
 	puts("Reading from .SEEshrc...");
 	while (fgets(line, sizeof(line), fp)) {
@@ -297,8 +300,6 @@ int main(int argc, char **argv, char **envp) {
 
 /*
 TODO:
-- implement ctrl+d to exit
-- create makefile
 - write readme
 - test
 */
