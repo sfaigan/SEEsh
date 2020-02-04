@@ -9,6 +9,161 @@
 
 extern char **environ;
 
+// Linked List for command history
+struct command {
+	char *cmd;
+	struct command* next;
+	struct command* prev;
+};
+
+struct command* cmd_list;
+
+/*!
+ * \brief create Allocate memory and create new single node
+ * \param elem The value of node
+ * \return Pointer to the new node
+ */
+struct command* create(char *cmd) {
+	int len = strlen(cmd);
+	char *cmd_str = (char*)malloc(sizeof(char)*(len+1));
+	strcpy(cmd_str, cmd);
+	struct command* newCmd = (struct command*)malloc(sizeof(struct command));
+
+	newCmd->cmd = cmd_str;
+	newCmd->prev = NULL;
+	newCmd->next = NULL;
+	return newCmd;
+}
+
+/*!
+ * \brief erase Remove single given node and free allocated memory
+ * \param ref Node to remove
+ * \return Next node the newly removed node
+ */
+struct command* erase(struct command* ref) {
+	struct command* nx = ref->next;
+	struct command* px = ref->prev;
+
+	free(ref->cmd);
+	free(ref);
+
+	if(nx) {
+		nx->prev = px;
+	}
+
+	if(px) {
+		px->next = nx;
+	}
+
+	return nx;
+}
+
+/*!
+ * \brief begin Traverse the linked-list to the head of it
+ * \param ref A node from list
+ * \return head of list
+ */
+struct command* begin(struct command* ref) {
+	while(ref->prev) {
+		ref = ref->prev;
+	}
+	return ref;
+}
+
+/*!
+ * \brief end Traverse the linked-list to the tail of it
+ * \param ref A node from list
+ * \return tail of list
+ */
+struct command* end(struct command* ref) {
+	while(ref->next) {
+		ref = ref->next;
+	}
+	return ref;
+}
+
+/*!
+ * \brief clear Removes all the nodes of list and free all allocated memory
+ * \param ref A node from list
+ */
+void clear(struct command* ref) {
+	ref = begin(ref);
+	while((ref = erase(ref)) != NULL);
+}
+
+/*!
+ * \brief push_back Append new node to the end of list
+ * \param ref A node from list
+ * \param newElem Value of new element
+ * \return The tail of list
+ */
+struct command* push_back(struct command* ref, char *cmd) {
+
+	struct command* tail = end(ref);
+
+	struct command* newCmd = create(cmd);
+
+	tail->next = newCmd;
+	newCmd->prev = tail;
+
+	return newCmd;
+}
+
+/*!
+ * \brief pop_front Removes a node from head of list
+ * \param ref A node from list
+ * \return New head of list
+ */
+struct command* pop_front(struct command* ref) {
+
+	struct command* head = begin(ref);
+
+	return erase(head);
+}
+
+/*!
+ * \brief unique Eliminates all but the first element from every consecutive group of equivalent elements from the list
+ * \param ref A node form list
+ * \return The head of the list
+ */
+struct command* unique(struct command* ref) {
+	struct command* cur = begin(ref);
+	
+	while (cur->next) {
+		if (strcmp(cur->cmd, cur->next->cmd) == 0) {
+			erase(cur->next);
+		} else {
+			cur = cur->next;
+		}
+	}
+	
+	return begin(cur);
+}
+
+void add_cmd(char *cmd) {
+	if (cmd[strlen(cmd)-1] == '\n') {
+		cmd[strlen(cmd)-1] = '\0';
+	}
+	if (cmd_list == NULL) {
+		cmd_list = create(cmd);
+	} else {
+		push_back(cmd_list, cmd);
+	}
+}
+
+/*!
+ * \brief print Print all elements of list following a new line
+ * \param ref A node from list
+ */
+void print(struct command* ref) {
+	struct command* cmdNode = begin(ref);
+
+	do {
+	  printf("%s\n", cmdNode->cmd);
+	} while((cmdNode = cmdNode->next) != NULL);
+	printf("\n");
+}
+
 // Built-in function declarations
 int seesh_cd(char **args);
 int seesh_pwd(char **args);
@@ -16,6 +171,7 @@ int seesh_help(char **args);
 int seesh_exit(char **args);
 int seesh_set(char **args);
 int seesh_unset(char **args);
+int seesh_history(char **args);
 
 // Array of built-in function commands
 char *builtin_str[] = {
@@ -24,7 +180,8 @@ char *builtin_str[] = {
 	"help",
 	"exit",
 	"set",
-	"unset"
+	"unset",
+	"history"
 };
 
 char *builtin_desc[] = {
@@ -34,6 +191,7 @@ char *builtin_desc[] = {
 	"exit: Exits SEEsh.",
 	"set [var] [val]: Sets a given environment variable \"var\" to a given value \"val\". If nothing is given for \"val\", the environment variable called \"var\" will be set to the empty string. If no parameters are given, prints a list of all environment variables.",
 	"unset [var]: Destroys a given environment variable \"var\".",
+	"history: Prints the last 5 commands written. Also, type \'!\' followed by the prefix of a command and it will autocomplete based on history."
 };
 
 // Array of built-in function pointers
@@ -43,7 +201,8 @@ int (*builtin_fn[]) (char**) = {
 	&seesh_help,
 	&seesh_exit,
 	&seesh_set,
-	&seesh_unset
+	&seesh_unset,
+	&seesh_history
 };
 
 // Returns the number of built-in commands
@@ -112,6 +271,7 @@ int seesh_help(char **args) {
 
 // Exit SEEsh
 int seesh_exit(char **args) {
+	clear(cmd_list);
 	return 0;
 }
 
@@ -146,6 +306,12 @@ int seesh_unset(char **args) {
 	return 1;
 }
 
+// Show command history
+int seesh_history(char **args) {
+	print(cmd_list);
+	return 1;
+}
+
 // Get input from stdin, return it as a line
 char *read_input(void) {
 	char *line = NULL;
@@ -153,6 +319,7 @@ char *read_input(void) {
 	int status = getline(&line, &buffer_size, stdin);
 	if (status == -1) {
 		free(line);
+		if (cmd_list) clear(cmd_list);
 		exit(1);
 	}
 	return line;
@@ -167,6 +334,7 @@ char **tokenize_input(char *line) {
 
 	if (!tokens) {
 		fprintf(stderr, "SEEsh: There was a problem allocating memory. Exiting...\n");
+		if (cmd_list) clear(cmd_list);
 		exit(EXIT_FAILURE);
 	}
 
@@ -180,6 +348,7 @@ char **tokenize_input(char *line) {
 
 			if (!tokens) {
 				fprintf(stderr, "SEEsh: There was a problem allocating memory. Exiting...\n");
+				if (cmd_list) clear(cmd_list);
 				exit(EXIT_FAILURE);
 			}
 		}
@@ -271,6 +440,7 @@ void interpret(int argc, char **argv) {
 	do {
 		printf("? ");
 		line = read_input();
+		add_cmd(line);
 		args = tokenize_input(line);
 		status = execute(args);
 
